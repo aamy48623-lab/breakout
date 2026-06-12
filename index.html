@@ -1,7 +1,429 @@
-<html>
-  <body>
-    <p>
-      Hello
-    </p>
-  </body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Breakout Game</title>
+
+<style>
+body{
+    margin:0;
+    background:#111;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+    font-family:Arial,sans-serif;
+    color:white;
+    flex-direction:column;
+}
+
+canvas{
+    background:#000;
+    border:3px solid #555;
+    max-width:95vw;
+}
+
+h2{
+    margin-bottom:10px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>🧱 Breakout Game</h2>
+
+<canvas id="game" width="800" height="500"></canvas>
+
+<script>
+
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+
+const WIDTH=canvas.width;
+const HEIGHT=canvas.height;
+
+let score=0;
+let lives=3;
+
+const paddle={
+    width:120,
+    height:12,
+    x:WIDTH/2-60,
+    y:HEIGHT-25,
+    speed:8
+};
+
+let ball={
+    x:WIDTH/2,
+    y:HEIGHT-60,
+    radius:8,
+    dx:4,
+    dy:-4
+};
+
+const rows=6;
+const cols=10;
+
+const brickWidth=70;
+const brickHeight=20;
+const padding=8;
+const offsetX=25;
+const offsetY=40;
+
+let bricks=[];
+
+function createBricks(){
+
+    bricks=[];
+
+    for(let r=0;r<rows;r++){
+
+        bricks[r]=[];
+
+        for(let c=0;c<cols;c++){
+
+            bricks[r][c]={
+
+                x:offsetX+c*(brickWidth+padding),
+
+                y:offsetY+r*(brickHeight+padding),
+
+                alive:true
+
+            };
+
+        }
+
+    }
+
+}
+
+createBricks();
+
+let left=false;
+let right=false;
+
+document.addEventListener("keydown",e=>{
+
+    if(e.key==="ArrowLeft") left=true;
+
+    if(e.key==="ArrowRight") right=true;
+
+    if(e.code==="Space" && gameOver){
+
+        restart();
+
+    }
+
+});
+
+document.addEventListener("keyup",e=>{
+
+    if(e.key==="ArrowLeft") left=false;
+
+    if(e.key==="ArrowRight") right=false;
+
+});
+
+canvas.addEventListener("mousemove",e=>{
+
+    const rect=canvas.getBoundingClientRect();
+
+    paddle.x=e.clientX-rect.left-paddle.width/2;
+
+});
+
+function restart(){
+
+    score=0;
+
+    lives=3;
+
+    gameOver=false;
+
+    paddle.x=WIDTH/2-60;
+
+    resetBall();
+
+    createBricks();
+
+}
+
+function resetBall(){
+
+    ball.x=WIDTH/2;
+
+    ball.y=HEIGHT-60;
+
+    ball.dx=4*(Math.random()>0.5?1:-1);
+
+    ball.dy=-4;
+
+}
+
+let gameOver=false;
+
+function update(){
+
+    if(gameOver)return;
+
+    if(left)paddle.x-=paddle.speed;
+
+    if(right)paddle.x+=paddle.speed;
+
+    if(paddle.x<0)paddle.x=0;
+
+    if(paddle.x+paddle.width>WIDTH)
+
+        paddle.x=WIDTH-paddle.width;
+
+    ball.x+=ball.dx;
+
+    ball.y+=ball.dy;
+
+    if(ball.x<ball.radius||
+
+       ball.x>WIDTH-ball.radius){
+
+        ball.dx*=-1;
+
+    }
+
+    if(ball.y<ball.radius){
+
+        ball.dy*=-1;
+
+    }
+
+    if(ball.y>HEIGHT){
+
+        lives--;
+
+        if(lives<=0){
+
+            gameOver=true;
+
+        }else{
+
+            resetBall();
+
+        }
+
+    }
+
+    if(
+
+        ball.y+ball.radius>paddle.y &&
+
+        ball.x>paddle.x &&
+
+        ball.x<paddle.x+paddle.width &&
+
+        ball.dy>0
+
+    ){
+
+        let hit=
+
+        (ball.x-(paddle.x+paddle.width/2))
+
+        /(paddle.width/2);
+
+        ball.dx=hit*6;
+
+        ball.dy=-Math.abs(ball.dy);
+
+    }
+
+    let remaining=0;
+
+    for(let r=0;r<rows;r++){
+
+        for(let c=0;c<cols;c++){
+
+            const b=bricks[r][c];
+
+            if(!b.alive)continue;
+
+            remaining++;
+
+            if(
+
+                ball.x>b.x &&
+
+                ball.x<b.x+brickWidth &&
+
+                ball.y+ball.radius>b.y &&
+
+                ball.y-ball.radius<b.y+brickHeight
+
+            ){
+
+                b.alive=false;
+
+                score+=10;
+
+                ball.dy*=-1;
+
+            }
+
+        }
+
+    }
+
+    if(remaining===0){
+
+        gameOver=true;
+
+    }
+
+}
+
+function draw(){
+
+    ctx.clearRect(0,0,WIDTH,HEIGHT);
+
+    ctx.fillStyle="#00aaff";
+
+    ctx.fillRect(
+
+        paddle.x,
+
+        paddle.y,
+
+        paddle.width,
+
+        paddle.height
+
+    );
+
+    ctx.beginPath();
+
+    ctx.arc(
+
+        ball.x,
+
+        ball.y,
+
+        ball.radius,
+
+        0,
+
+        Math.PI*2
+
+    );
+
+    ctx.fillStyle="white";
+
+    ctx.fill();
+
+    for(let r=0;r<rows;r++){
+
+        for(let c=0;c<cols;c++){
+
+            const b=bricks[r][c];
+
+            if(!b.alive)continue;
+
+            ctx.fillStyle=
+
+            `hsl(${r*55+c*8},80%,55%)`;
+
+            ctx.fillRect(
+
+                b.x,
+
+                b.y,
+
+                brickWidth,
+
+                brickHeight
+
+            );
+
+        }
+
+    }
+
+    ctx.fillStyle="white";
+
+    ctx.font="20px Arial";
+
+    ctx.fillText(
+
+        "Score: "+score,
+
+        10,
+
+        22
+
+    );
+
+    ctx.fillText(
+
+        "Lives: "+lives,
+
+        WIDTH-110,
+
+        22
+
+    );
+
+    if(gameOver){
+
+        ctx.fillStyle="rgba(0,0,0,0.75)";
+
+        ctx.fillRect(0,0,WIDTH,HEIGHT);
+
+        ctx.fillStyle="white";
+
+        ctx.font="48px Arial";
+
+        ctx.fillText(
+
+            score===rows*cols*10 ?
+
+            "YOU WIN!" :
+
+            "GAME OVER",
+
+            240,
+
+            220
+
+        );
+
+        ctx.font="24px Arial";
+
+        ctx.fillText(
+
+            "Press SPACE to Restart",
+
+            250,
+
+            270
+
+        );
+
+    }
+
+}
+
+function gameLoop(){
+
+    update();
+
+    draw();
+
+    requestAnimationFrame(gameLoop);
+
+}
+
+gameLoop();
+
+</script>
+
+</body>
 </html>
